@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Craft Coffee App</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* Интеграция с нативными цветами Telegram + Fallbacks */
+        :root {
+            --bg-color: var(--tg-theme-bg-color, #f8f9fa);
+            --text-color: var(--tg-theme-text-color, #212529);
+            --hint-color: var(--tg-theme-hint-color, #6c757d);
+            --button-color: var(--tg-theme-button-color, #ff6b6b);
+            --button-text-color: var(--tg-theme-button-text-color, #ffffff);
+            --secondary-bg: var(--tg-theme-secondary-bg-color, #ffffff);
+            --glass-bg: rgba(var(--tg-theme-bg-color-rgb, 255, 255, 255), 0.8);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            padding-bottom: 90px;
+            overflow-x: hidden;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* Header & Glassmorphism */
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            background: var(--glass-bg);
+            padding: 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .user-greeting h1 {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .user-greeting p {
+            font-size: 13px;
+            color: var(--hint-color);
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--button-color), #ff8e8b);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        /* Search Bar */
+        .search-container {
+            padding: 12px 20px;
+        }
+        
+        .search-box {
+            background: var(--secondary-bg);
+            border-radius: 14px;
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+
+        .search-box input {
+            border: none;
+            background: transparent;
+            width: 100%;
+            font-size: 16px;
+            color: var(--text-color);
+            outline: none;
+        }
+        
+        .search-box input::placeholder { color: var(--hint-color); }
+
+        /* Categories (Horizontal Scroll) */
+        .categories {
+            display: flex;
+            overflow-x: auto;
+            padding: 0 20px 10px 20px;
+            gap: 12px;
+            scrollbar-width: none;
+        }
+        
+        .categories::-webkit-scrollbar { display: none; }
+
+        .category-chip {
+            background: var(--secondary-bg);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            white-space: nowrap;
+            color: var(--hint-color);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+            transition: all 0.2s ease;
+        }
+
+        .category-chip.active {
+            background: var(--button-color);
+            color: var(--button-text-color);
+        }
+
+        /* Product Grid */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 16px;
+            padding: 10px 20px;
+        }
+
+        .product-card {
+            background: var(--secondary-bg);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.04);
+            display: flex;
+            flex-direction: column;
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .product-image {
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 50px;
+            background: linear-gradient(145deg, #f3f3f3, #e6e6e6);
+        }
+
+        .product-info {
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+
+        .product-title {
+            font-weight: 700;
+            font-size: 15px;
+            margin-bottom: 4px;
+        }
+
+        .product-desc {
+            font-size: 12px;
+            color: var(--hint-color);
+            margin-bottom: 12px;
+            line-height: 1.3;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .product-footer {
+            margin-top: auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .price {
+            font-weight: 800;
+            font-size: 16px;
+        }
+
+        /* Controls */
+        .add-btn {
+            background: var(--button-color);
+            color: var(--button-text-color);
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        .add-btn:active { transform: scale(0.9); }
+
+        .qty-controls {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            background: var(--bg-color);
+            border-radius: 10px;
+            padding: 4px;
+        }
+
+        .qty-btn {
+            background: var(--secondary-bg);
+            border: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            color: var(--text-color);
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .qty-count {
+            font-size: 14px;
+            font-weight: 700;
+            min-width: 12px;
+            text-align: center;
+        }
+
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--text-color);
+            color: var(--bg-color);
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            z-index: 1000;
+            pointer-events: none;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="user-greeting">
+            <h1 id="greeting">Привет! 👋</h1>
+            <p>Какой кофе сварим сегодня?</p>
+        </div>
+        <div class="avatar" id="avatar">U</div>
+    </header>
+
+    <div class="search-container">
+        <div class="search-box">
+            <i class="fas fa-search" style="color: var(--hint-color)"></i>
+            <input type="text" id="searchInput" placeholder="Найти любимый напиток..." oninput="filterProducts()">
+        </div>
+    </div>
+
+    <div class="categories" id="categoryTabs">
+        <div class="category-chip active" onclick="setCategory('all')">Все</div>
+        <div class="category-chip" onclick="setCategory('coffee')">Кофе</div>
+        <div class="category-chip" onclick="setCategory('tea')">Чай и Матча</div>
+        <div class="category-chip" onclick="setCategory('dessert')">Десерты</div>
+    </div>
+
+    <div class="grid" id="productGrid">
+        <!-- JS рендерит товары здесь -->
+    </div>
+
+    <div class="toast" id="toast">Товар добавлен</div>
+
+    <script>
+        // Инициализация Telegram API
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        tg.ready();
+        
+        // Настройка главной кнопки
+        tg.MainButton.textColor = tg.themeParams.button_text_color || '#ffffff';
+        tg.MainButton.color = tg.themeParams.button_color || '#ff6b6b';
+
+        // Персонализация (берем имя из ТГ)
+        if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+            const user = tg.initDataUnsafe.user;
+            document.getElementById('greeting').innerText = `Привет, ${user.first_name}! 👋`;
+            document.getElementById('avatar').innerText = user.first_name.charAt(0).toUpperCase();
+        }
+
+        // База данных товаров
+        const products = [
+            { id: 1, category: 'coffee', name: "Двойной Эспрессо", desc: "100% Арабика, Эфиопия. Яркая кислотность.", price: 160, img: "☕", gradient: "linear-gradient(145deg, #d7ccc8, #bcaaa4)" },
+            { id: 2, category: 'coffee', name: "Авторский Раф", desc: "Сливки, эспрессо и домашняя соленая карамель.", price: 280, img: "🍯", gradient: "linear-gradient(145deg, #ffe0b2, #ffcc80)" },
+            { id: 3, category: 'coffee', name: "Айс Латте", desc: "Холодный кофе с молоком и сиропом на выбор.", price: 250, img: "🧊", gradient: "linear-gradient(145deg, #b3e5fc, #81d4fa)" },
+            { id: 4, category: 'coffee', name: "Флэт Уайт", desc: "Двойной шот эспрессо и взбитое молоко.", price: 230, img: "☕", gradient: "linear-gradient(145deg, #f5f5f5, #e0e0e0)" },
+            { id: 5, category: 'tea', name: "Матча Латте", desc: "Церемониальная японская матча на кокосовом.", price: 320, img: "🍵", gradient: "linear-gradient(145deg, #c8e6c9, #a5d6a7)" },
+            { id: 6, category: 'tea', name: "Айс Ти Персик", desc: "Холодный черный чай с кусочками персика.", price: 210, img: "🍹", gradient: "linear-gradient(145deg, #ffccbc, #ffab91)" },
+            { id: 7, category: 'dessert', name: "Круассан", desc: "Классический французский круассан на масле.", price: 180, img: "🥐", gradient: "linear-gradient(145deg, #fff9c4, #fff59d)" },
+            { id: 8, category: 'dessert', name: "Чизкейк Нью-Йорк", desc: "Нежный творожный сыр на песочной основе.", price: 350, img: "🍰", gradient: "linear-gradient(145deg, #f8bbd0, #f48fb1)" }
+        ];
+
+        let cart = {};
+        let currentCategory = 'all';
+
+        // Haptic Feedback обертка
+        function haptic(type = 'light') {
+            if (tg.HapticFeedback) {
+                tg.HapticFeedback.impactOccurred(type);
+            }
+        }
+
+        // Рендер товаров
+        function renderProducts(filterText = '') {
+            const grid = document.getElementById('productGrid');
+            grid.innerHTML = '';
+
+            const filtered = products.filter(p => {
+                const matchesCat = currentCategory === 'all' || p.category === currentCategory;
+                const matchesSearch = p.name.toLowerCase().includes(filterText.toLowerCase());
+                return matchesCat && matchesSearch;
+            });
+
+            if(filtered.length === 0) {
+                grid.innerHTML = `<p style="grid-column: 1/-1; text-align:center; color: var(--hint-color); padding: 40px 0;">Ничего не найдено 😔</p>`;
+                return;
+            }
+
+            filtered.forEach((product, index) => {
+                const delay = index * 0.05; // Каскадная анимация
+                const qty = cart[product.id] || 0;
+                
+                const showAddBtn = qty === 0 ? 'flex' : 'none';
+                const showControls = qty > 0 ? 'flex' : 'none';
+
+                grid.innerHTML += `
+                    <div class="product-card" style="animation-delay: ${delay}s">
+                        <div class="product-image" style="background: ${product.gradient}">${product.img}</div>
+                        <div class="product-info">
+                            <div class="product-title">${product.name}</div>
+                            <div class="product-desc">${product.desc}</div>
+                            <div class="product-footer">
+                                <span class="price">${product.price} ₽</span>
+                                
+                                <button class="add-btn" id="add-${product.id}" onclick="updateCart(${product.id}, 1, true)" style="display: ${showAddBtn}">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                                
+                                <div class="qty-controls" id="ctrl-${product.id}" style="display: ${showControls}">
+                                    <button class="qty-btn" onclick="updateCart(${product.id}, -1)">-</button>
+                                    <span class="qty-count" id="count-${product.id}">${qty}</span>
+                                    <button class="qty-btn" onclick="updateCart(${product.id}, 1)">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // Логика корзины
+        function updateCart(id, delta, isNew = false) {
+            haptic('medium');
+            
+            if (!cart[id]) cart[id] = 0;
+            cart[id] += delta;
+
+            if (cart[id] <= 0) {
+                delete cart[id];
+                document.getElementById(`add-${id}`).style.display = 'flex';
+                document.getElementById(`ctrl-${id}`).style.display = 'none';
+            } else {
+                document.getElementById(`add-${id}`).style.display = 'none';
+                document.getElementById(`ctrl-${id}`).style.display = 'flex';
+                document.getElementById(`count-${id}`).innerText = cart[id];
+                if (isNew) showToast('Добавлено в заказ');
+            }
+
+            updateMainButton();
+        }
+
+        // Обновление Главной кнопки ТГ
+        function updateMainButton() {
+            let total = 0;
+            let count = 0;
+            
+            for (let id in cart) {
+                const p = products.find(p => p.id == id);
+                total += p.price * cart[id];
+                count += cart[id];
+            }
+
+            if (total > 0) {
+                tg.MainButton.setText(`ОПЛАТИТЬ ${total} ₽ • ${count} ШТ`);
+                if (!tg.MainButton.isVisible) tg.MainButton.show();
+            } else {
+                tg.MainButton.hide();
+            }
+        }
+
+        // Отправка данных при клике на MainButton
+        Telegram.WebApp.onEvent('mainButtonClicked', () => {
+            haptic('heavy');
+            const order = products
+                .filter(p => cart[p.id])
+                .map(p => ({ id: p.id, name: p.name, qty: cart[p.id], sum: p.price * cart[p.id] }));
+            
+            tg.sendData(JSON.stringify(order));
+        });
+
+        // Фильтрация и Поиск
+        function setCategory(cat) {
+            haptic('light');
+            currentCategory = cat;
+            
+            // Обновление UI табов
+            const chips = document.querySelectorAll('.category-chip');
+            chips.forEach(chip => chip.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            renderProducts(document.getElementById('searchInput').value);
+        }
+
+        function filterProducts() {
+            renderProducts(document.getElementById('searchInput').value);
+        }
+
+        // Всплывающие уведомления (Toast)
+        let toastTimeout;
+        function showToast(text) {
+            const toast = document.getElementById('toast');
+            toast.innerText = text;
+            toast.classList.add('show');
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+
+        // Инициализация
+        renderProducts();
+
+        // Адаптация под изменение темы ТГ в реальном времени
+        Telegram.WebApp.onEvent('themeChanged', () => {
+            document.documentElement.style.setProperty('--bg-color', tg.themeParams.bg_color);
+            document.documentElement.style.setProperty('--text-color', tg.themeParams.text_color);
+            document.documentElement.style.setProperty('--button-color', tg.themeParams.button_color);
+            document.documentElement.style.setProperty('--button-text-color', tg.themeParams.button_text_color);
+        });
+    </script>
+</body>
+</html>
